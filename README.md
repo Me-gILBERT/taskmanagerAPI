@@ -1,5 +1,9 @@
 # Task Management API
 
+![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1)
+![Docker](https://img.shields.io/badge/Docker-✓-2496ED)
+
 Enterprise Task & Project Management Platform built with .NET 10, PostgreSQL, Docker, and CI/CD.
 
 ## Tech Stack
