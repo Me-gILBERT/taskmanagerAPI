@@ -92,8 +92,3 @@ src/
 └── TaskManagement.Infrastructure # EF Context, Repositories, External Services
 ```
 
-## Development Plan
-
-See [dotnet-weekly-plan.md](dotnet-weekly-plan.md) for the full 20-week progressive development roadmap.
-
-Progress is tracked in [LOGBOOK.md](LOGBOOK.md).
