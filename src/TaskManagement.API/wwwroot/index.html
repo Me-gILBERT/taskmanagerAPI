@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task Manager</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; background: #f1f5f9; color: #0f172a; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+.container { max-width: 960px; width: 100%; padding: 24px; }
+.card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.1); padding: 24px; margin-bottom: 16px; }
+h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 8px; }
+h2 { font-size: 1.15rem; font-weight: 600; margin-bottom: 12px; }
+.form-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.form-row:last-child { margin-bottom: 0; }
+input, select, textarea { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: .875rem; font-family: inherit; outline: none; transition: border-color .15s; }
+input:focus, select:focus, textarea:focus { border-color: #6366f1; }
+input, select { flex: 1; min-width: 140px; }
+textarea { width: 100%; resize: vertical; min-height: 60px; }
+button { padding: 8px 16px; border: none; border-radius: 6px; font-size: .875rem; font-weight: 500; cursor: pointer; transition: opacity .15s; white-space: nowrap; }
+button:hover { opacity: .85; }
+.btn-primary { background: #6366f1; color: #fff; }
+.btn-danger { background: #ef4444; color: #fff; }
+.btn-secondary { background: #e2e8f0; color: #334155; }
+.btn-sm { padding: 4px 10px; font-size: .8rem; }
+.hidden { display: none !important; }
+table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e2e8f0; }
+th { font-weight: 600; color: #475569; }
+tr:hover { background: #f8fafc; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: .75rem; font-weight: 500; }
+.badge-todo { background: #fef3c7; color: #92400e; }
+.badge-inprogress { background: #dbeafe; color: #1e40af; }
+.badge-done { background: #d1fae5; color: #065f46; }
+.nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.nav-end { display: flex; align-items: center; gap: 12px; }
+.error { color: #ef4444; font-size: .875rem; margin-top: 4px; }
+.success { color: #16a34a; font-size: .875rem; margin-top: 4px; }
+.pagination { display: flex; gap: 4px; align-items: center; justify-content: center; margin-top: 12px; font-size: .875rem; }
+.pagination button { padding: 4px 12px; }
+.empty { text-align: center; color: #94a3b8; padding: 24px 0; font-size: .875rem; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.stat { text-align: center; padding: 12px; background: #f8fafc; border-radius: 6px; }
+.stat-value { font-size: 1.5rem; font-weight: 700; }
+.stat-label { font-size: .75rem; color: #64748b; margin-top: 2px; }
+.toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: 8px; color: #fff; font-size: .875rem; z-index: 1000; opacity: 0; transition: opacity .3s; pointer-events: none; }
+.toast.show { opacity: 1; }
+.toast-success { background: #16a34a; }
+.toast-error { background: #ef4444; }
+</style>
+</head>
+<body>
+<div class="container" id="app">
+  <!-- Login -->
+  <div id="login-view" class="card" style="max-width:400px;margin:80px auto">
+    <h1>Task Manager</h1>
+    <p style="color:#64748b;margin-bottom:16px;font-size:.875rem">Sign in to manage your tasks</p>
+    <div class="form-row">
+      <input type="email" id="login-email" placeholder="Email" value="admin@taskmanager.com">
+    </div>
+    <div class="form-row">
+      <input type="password" id="login-password" placeholder="Password" value="Admin123!">
+    </div>
+    <div class="form-row">
+      <button class="btn-primary" onclick="login()" style="flex:1">Sign In</button>
+    </div>
+    <div id="login-error" class="error"></div>
+  </div>
+
+  <!-- Main App -->
+  <div id="main-view" class="hidden">
+    <div class="nav">
+      <h1>Task Manager</h1>
+      <div class="nav-end">
+        <span id="user-info" style="font-size:.875rem;color:#475569"></span>
+        <button class="btn-secondary btn-sm" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="card" style="padding:12px 24px">
+      <div style="display:flex;gap:8px">
+        <button id="tab-tasks" class="btn-primary btn-sm" onclick="showTab('tasks')">Tasks</button>
+        <button id="tab-create" class="btn-secondary btn-sm" onclick="showTab('create')">+ New Task</button>
+        <button id="tab-analytics" class="btn-secondary btn-sm" onclick="showTab('analytics')">Analytics</button>
+      </div>
+    </div>
+
+    <!-- Tasks Tab -->
+    <div id="tab-tasks-view">
+      <!-- Filters -->
+      <div class="card">
+        <div class="form-row">
+          <input type="text" id="filter-search" placeholder="Search title or description">
+          <select id="filter-status">
+            <option value="">All statuses</option>
+            <option value="Todo">Todo</option>
+            <option value="InProgress">InProgress</option>
+            <option value="Done">Done</option>
+          </select>
+          <button class="btn-primary btn-sm" onclick="loadTasks()">Search</button>
+        </div>
+      </div>
+
+      <!-- Task List -->
+      <div class="card">
+        <div id="task-list">
+          <div class="empty">Loading tasks...</div>
+        </div>
+        <div id="pagination" class="pagination hidden"></div>
+      </div>
+    </div>
+
+    <!-- Create Tab -->
+    <div id="tab-create-view" class="hidden card">
+      <h2>Create Task</h2>
+      <div class="form-row">
+        <input type="text" id="create-title" placeholder="Task title" style="flex:2">
+      </div>
+      <div class="form-row">
+        <textarea id="create-desc" placeholder="Description (optional)"></textarea>
+      </div>
+      <div class="form-row">
+        <input type="date" id="create-due">
+        <button class="btn-primary" onclick="createTask()">Create</button>
+      </div>
+      <div id="create-msg" class="success"></div>
+    </div>
+
+    <!-- Analytics Tab -->
+    <div id="tab-analytics-view" class="hidden">
+      <div class="card" id="analytics-summary">
+        <h2>Task Summary</h2>
+        <div class="stat-grid" id="summary-stats"></div>
+      </div>
+      <div class="card">
+        <h2>Completion Rate</h2>
+        <div class="stat-grid">
+          <div class="stat"><div class="stat-value" id="rate-pct">-</div><div class="stat-label">Rate</div></div>
+          <div class="stat"><div class="stat-value" id="rate-completed">-</div><div class="stat-label">Completed</div></div>
+          <div class="stat"><div class="stat-value" id="rate-total">-</div><div class="stat-label">Total</div></div>
+        </div>
+        <div class="form-row">
+          <input type="number" id="rate-days" value="30" min="1" max="365" style="max-width:100px">
+          <button class="btn-primary btn-sm" onclick="loadCompletionRate()">Refresh</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Overdue Tasks</h2>
+        <div id="overdue-list"><div class="empty">No overdue tasks</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<script>
+let token = null;
+let currentUser = null;
+let currentPage = 1;
+
+// API helper
+async function api(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`/api/v1${path}`, { ...options, headers: { ...headers, ...options.headers } });
+  if (res.status === 401) { logout(); throw new Error('Unauthorized'); }
+  if (res.status === 204) return null;
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || data.title || 'Request failed');
+  return data;
+}
+
+function toast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast toast-${type} show`;
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// Auth
+async function login() {
+  const email = document.getElementById('login-email').value;
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+  try {
+    const data = await api('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+    token = data.accessToken;
+    currentUser = data.user;
+    document.getElementById('login-view').classList.add('hidden');
+    document.getElementById('main-view').classList.remove('hidden');
+    document.getElementById('user-info').textContent = `${currentUser.email} (${currentUser.role})`;
+    showTab('tasks');
+    await loadTasks();
+  } catch (e) { errEl.textContent = e.message; }
+}
+
+function logout() {
+  token = null; currentUser = null; currentPage = 1;
+  document.getElementById('main-view').classList.add('hidden');
+  document.getElementById('login-view').classList.remove('hidden');
+}
+
+// Tab switching
+function showTab(tab) {
+  ['tasks','create','analytics'].forEach(t => {
+    document.getElementById(`tab-${t}-view`).classList.toggle('hidden', t !== tab);
+    const btn = document.getElementById(`tab-${t}`);
+    btn.className = btn.className.replace('btn-primary','btn-secondary');
+    if (t === tab) btn.className = btn.className.replace('btn-secondary','btn-primary');
+  });
+  if (tab === 'tasks') loadTasks();
+  if (tab === 'analytics') loadAnalytics();
+}
+
+// Tasks
+async function loadTasks(page) {
+  if (page) currentPage = page;
+  const search = document.getElementById('filter-search').value;
+  const status = document.getElementById('filter-status').value;
+  let url = `/tasks?pageNumber=${currentPage}&pageSize=10`;
+  if (search) url += `&search=${encodeURIComponent(search)}`;
+  if (status) url += `&status=${status}`;
+  try {
+    const result = await api(url);
+    renderTasks(result);
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+function renderTasks(result) {
+  const el = document.getElementById('task-list');
+  if (!result.data || result.data.length === 0) {
+    el.innerHTML = '<div class="empty">No tasks found. Create one!</div>';
+    document.getElementById('pagination').classList.add('hidden');
+    return;
+  }
+  let html = '<table><thead><tr><th>Title</th><th>Status</th><th>Due</th><th></th></tr></thead><tbody>';
+  result.data.forEach(t => {
+    const due = t.dueDate ? new Date(t.dueDate).toLocaleDateString() : '-';
+    const badge = `badge-${t.status.toLowerCase()}`;
+    html += `<tr>
+      <td><strong>${escHtml(t.title)}</strong>${t.description ? '<br><span style="color:#64748b;font-size:.8rem">'+escHtml(t.description)+'</span>' : ''}</td>
+      <td><span class="badge ${badge}">${t.status}</span></td>
+      <td style="color:#64748b;font-size:.8rem">${due}</td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn-secondary btn-sm" onclick="editTask('${t.id}','${escHtml(t.title)}','${escHtml(t.description||'')}','${t.status}','${t.dueDate||''}')">Edit</button>
+        <button class="btn-danger btn-sm" onclick="deleteTask('${t.id}')">Del</button>
+      </td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+
+  // Pagination
+  const p = document.getElementById('pagination');
+  if (result.totalPages > 1) {
+    p.classList.remove('hidden');
+    let ph = '';
+    for (let i = 1; i <= result.totalPages; i++) {
+      if (i === currentPage) ph += `<span style="padding:4px 10px;font-weight:600">${i}</span>`;
+      else ph += `<button class="btn-secondary btn-sm" onclick="loadTasks(${i})">${i}</button>`;
+    }
+    ph = `<button class="btn-secondary btn-sm" onclick="loadTasks(${currentPage-1})" ${currentPage<=1?'disabled':''}>←</button>${ph}<button class="btn-secondary btn-sm" onclick="loadTasks(${currentPage+1})" ${currentPage>=result.totalPages?'disabled':''}>→</button>`;
+    ph += `<span style="margin-left:8px;color:#64748b">${result.totalRecords} total</span>`;
+    p.innerHTML = ph;
+  } else {
+    p.classList.add('hidden');
+  }
+}
+
+function escHtml(s) { if (!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Create
+async function createTask() {
+  const title = document.getElementById('create-title').value;
+  if (!title) { toast('Title is required', 'error'); return; }
+  const desc = document.getElementById('create-desc').value || null;
+  const due = document.getElementById('create-due').value || null;
+  try {
+    await api('/tasks', { method: 'POST', body: JSON.stringify({ title, description: desc, dueDate: due }) });
+    document.getElementById('create-title').value = '';
+    document.getElementById('create-desc').value = '';
+    document.getElementById('create-due').value = '';
+    toast('Task created!');
+    showTab('tasks');
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// Edit inline form
+function editTask(id, title, desc, status, due) {
+  const el = document.getElementById('task-list');
+  // Add an edit row after the task row (simple approach: prompt)
+  const newTitle = prompt('Title:', title);
+  if (newTitle === null) return;
+  const newStatus = prompt('Status (Todo / InProgress / Done):', status);
+  if (newStatus === null) return;
+  updateTask(id, newTitle, desc, newStatus, due || null);
+}
+
+async function updateTask(id, title, desc, status, due) {
+  try {
+    await api(`/tasks/${id}`, { method: 'PUT', body: JSON.stringify({ title, description: desc, status, dueDate: due }) });
+    toast('Task updated!');
+    await loadTasks();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function deleteTask(id) {
+  if (!confirm('Delete this task?')) return;
+  try {
+    await api(`/tasks/${id}`, { method: 'DELETE' });
+    toast('Task deleted!');
+    await loadTasks();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// Analytics
+async function loadAnalytics() {
+  try {
+    const summary = await api('/analytics/task-summary');
+    const statsEl = document.getElementById('summary-stats');
+    statsEl.innerHTML = `<div class="stat"><div class="stat-value">${summary.totalTasks}</div><div class="stat-label">Total</div></div>`;
+    (summary.byStatus || []).forEach(s => {
+      statsEl.innerHTML += `<div class="stat"><div class="stat-value">${s.count}</div><div class="stat-label">${s.status}</div></div>`;
+    });
+    await loadCompletionRate();
+    await loadOverdue();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function loadCompletionRate() {
+  const days = document.getElementById('rate-days').value || 30;
+  try {
+    const rate = await api(`/analytics/completion-rate?days=${days}`);
+    document.getElementById('rate-pct').textContent = `${rate.completionRatePercent}%`;
+    document.getElementById('rate-completed').textContent = rate.completedTasks;
+    document.getElementById('rate-total').textContent = rate.totalTasks;
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function loadOverdue() {
+  try {
+    const data = await api('/analytics/overdue');
+    const el = document.getElementById('overdue-list');
+    if (!data.tasks || data.tasks.length === 0) {
+      el.innerHTML = '<div class="empty">No overdue tasks</div>';
+      return;
+    }
+    let html = '<table><thead><tr><th>Title</th><th>Status</th><th>Days Overdue</th></tr></thead><tbody>';
+    data.tasks.forEach(t => {
+      html += `<tr><td>${escHtml(t.title)}</td><td><span class="badge badge-${t.status.toLowerCase()}">${t.status}</span></td><td style="color:#ef4444;font-weight:600">${t.daysOverdue}d</td></tr>`;
+    });
+    html += '</tbody></table>';
+    el.innerHTML = html;
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// Auto-login if token in session (could persist, but simple)
+</script>
+</body>
+</html>
